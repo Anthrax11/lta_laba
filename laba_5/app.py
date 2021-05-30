@@ -4,7 +4,7 @@ from file_operations import format_input, parse_line, read_file, write_file
 
 # Инициализация глобальных переменных:
 laba_name = "ЛТА. Технологии обработки информации. ЛР5"
-cur_line = 0            # хранит текущую (отоброжаемую) строку файла
+cur_line = 0     # хранит индекс текущей (отоброжаемой) строки файла
 
 def clear_entry_fields():
     """Удаляет данные из всех полей"""
@@ -97,16 +97,19 @@ def prev_line() -> None:
 def delete_block() -> None:
     """Обработчик клика по кнопке
     Удалить
+    Согласно условиям задачи, удаляет
+    запись не из файла, а из хранимого в 
+    памяти списка data.
+    Также проверяет, остались ли данные для отображения.
     """
     global cur_line
     data.remove(data[cur_line])
+    cur_line = 0
     if data:
-        cur_line = 0
         clear_entry_fields()
         fill_entry_fields()
     else:
         clear_entry_fields()
-        cur_line = 0
         check_position()
         del_btn.config(state=DISABLED)
         show_info("Нет данных для отоображения")
@@ -130,7 +133,12 @@ def add_block() -> None:
 
 def save_changes() -> None:
     """Обработчик клика по кнопке
-    Сохранить
+    Сохранить.
+    Забирает данные из полей ввода данных,
+    форматирует их в требуемый формат хранения
+    и обновляет хранимый в памяти список данных.
+    По вызову активирует кнопку "Упаковать",
+    позволяющую записать изменения из памяти в файл.
     """
     new_data = (
         surname_var.get(),
@@ -145,7 +153,9 @@ def save_changes() -> None:
 
 def pack_data() -> None:
     """Обработчик клика по кнопке
-    Упаковать
+    Упаковать.
+    Сохраняет хранимые в памяти данные со всеми
+    изменениями.
     """
     write_file(data)
     pack_btn.config(state=DISABLED)
@@ -155,7 +165,7 @@ def entry_to_name(entry: str) -> list:
     """Получаем необходимые для отображения/поиска
     параметры по имения виджета на котором
     находится курсор
-     """
+    """
     entries = {
         "!entry": ["Фамилия", "surname"],
         "!entry2": ["Имя", "name"],
@@ -166,13 +176,13 @@ def entry_to_name(entry: str) -> list:
     return entries[entry]
 
 def search_window() -> None:
-    """Конфигурирует окно поиска
+    """Конфигурирует и открывает окно поиска
     в зависимости от того, где находился 
-    курсор в момент клика по кнопке искать
+    курсор в момент клика по кнопке "Искать"
     """
     global field
     try:
-        focus = root.focus_get().__dict__["_name"]                      # имя поля в котором находится курсор
+        focus = root.focus_get().__dict__["_name"]   # имя поля в котором находится курсор
         field = entry_to_name(focus)
     except KeyError:
         show_info("Кликните на поле, по которому хотите совершить поиск")
@@ -192,7 +202,8 @@ def search_window() -> None:
 
 def search_item() -> None:
     """Выполняет поиск записи по заданному ключу и
-    значению по записям начиная от отображаемой
+    значению по всем записям начиная от отображаемой
+    (поиск вперёд).
     """
     global cur_line
     found = False
@@ -218,7 +229,7 @@ def set_filters(filt_data: list) -> None:
     data_indexes = list(range(len(filt_data)))
 
 def filter_rows() -> list:
-    """Логика фильтра:
+    """Логика кнопки "Фильтр":
     1. Принимает введённые данные в поля фильтрации
     Если оба пустые, сообщает об этом пользователю и
     прерывает работу функции.
@@ -291,6 +302,10 @@ def discard_filter() -> None:
     check_position()
 
 def make_selection() -> list:
+    """Осуществляет поиск всех записей и возвращает их
+    в виде подготовленному к отображению в списке выборки.
+    Также хранит индекс найденной строки.
+    """
     raw = filter_rows()
     if raw:
         result = []
@@ -300,6 +315,14 @@ def make_selection() -> list:
         return result
 
 def selection_window() -> None:
+    """Открывает окно "Выборка" при условии
+    успешного поиска по имени и/или фамилии.
+    Вводит новую глобальную переменную selection,
+    представляющую собой список кортежей следующего
+    вида: [(индекс, "Имя Фамилия"), ...]
+    К этой переменной в дальнейшем обращается
+    обработчик клика по элементу click_select
+    """
     global select_box
     global selection
 
@@ -317,6 +340,13 @@ def selection_window() -> None:
     select_box.bind('<Double-1>', click_select)
 
 def click_select(event) -> None:
+    """Обработчик клика по элемену из окна
+    выборки.
+    При помощи глобальной переменной selection
+    сопоставляет id "кликнутого" элемента и
+    индекс данных. По найденному индексу данных
+    выводится соответсвующая запись.
+    """
     global cur_line
     
     selected = select_box.curselection()[0]
@@ -363,7 +393,7 @@ phone_lbl.grid(row=4, column=0)
 phone_ent = Entry(textvariable=phone_var, width="40")
 phone_ent.grid(row=4, column=1)
 
-# кнопки:
+# кнопки Предыдущий/Следующий:
 prev_btn = Button(text="Предыдущий", anchor="e", command=prev_line)
 next_btn = Button(text="Следующий", command=next_line)
 prev_btn.grid(row=6, column=0, pady="10")
@@ -385,13 +415,12 @@ pack_btn.grid(row=3, column=3)
 search_btn = Button(text="Искать...", width="12", command=search_window)
 search_btn.grid(row=6, column=3)
 
-# секция фильтр (ЛР5)
-
-# - рамка
+# секция фильтр (ЛР5):
+# - рамка для фильтра и выборки
 filter_wig = LabelFrame(root, text="Условие", height="60")
 filter_wig.grid(row=7, columnspan=4, sticky="nsew")
 
-# - кнопки и окна
+# - кнопки и окна фильтра и выборки
 f_surname_var = StringVar()
 f_surname_lbl = Label(filter_wig, text="Фамилия", justify=LEFT, width="16", anchor="w")
 f_surname_lbl.grid(row=0, column=0, pady="2")
